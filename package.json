@@ -1,0 +1,16 @@
+{
+  "name": "cunha-query-builder",
+  "version": "1.0.0",
+  "description": "A MYSQL query builder, including: SELECTS, INSERTS, UPDATE, WHERE.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["mysql", "querybuilder", "stringGenerator"],
+  "author": "gabriel_eduardo_cunha",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gabriel-Eduardo-Cunha/mysql-query-builder"
+  },
+  "license": "ISC"
+}
