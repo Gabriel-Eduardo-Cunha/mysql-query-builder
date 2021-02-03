@@ -1,6 +1,6 @@
 {
   "name": "cunha-query-builder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A MYSQL query builder, including: SELECTS, INSERTS, UPDATE, WHERE.",
   "main": "index.js",
   "scripts": {

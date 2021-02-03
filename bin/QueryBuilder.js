@@ -11,7 +11,8 @@ function QueryBuilder(schema=null) {
             return ""
         }
     }
-    this.select = (table, selectConfigs) => {
+    this.select = (table, selectConfigs={}) => {
+        if(typeof selectColumns !== 'object' || selectColumns === null) selectColumns = {};
         const select = `SELECT ${selectColumns((selectConfigs.select || null), table)}`
         const from = `FROM ${this.schema ? `${this.schema}.` : ''}${table}`
         const { join, joinColumns } = selectConfigs.join ? this.join(selectConfigs.join) : { join: '', joinColumns: '' }
