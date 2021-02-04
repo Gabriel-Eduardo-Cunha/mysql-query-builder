@@ -39,7 +39,7 @@ const query = queryBuilder.select('client', {
 console.log(query);
 
 ```
-
+* Output
 ```output
 SELECT *
 ,cliente_document.id as clientDocumentId,CONCAT(client_document.name, ".", client_document.extension) as clientDocumentFile
