@@ -85,7 +85,7 @@ function QueryBuilder(schema=null) {
     
     function selectColumns(select, table) {
         let columns;
-        if (typeof select === 'string') {
+        if (typeof select === 'string' && select.replace(/\s/g, '') !== '') {
             columns = select
         } else if (Array.isArray(select)) {
             columns = select.join(',')
@@ -151,9 +151,13 @@ function QueryBuilder(schema=null) {
     }
     
     function esc(value) {
-        if (!isNaN(value)) {
+        if(value === null || value === undefined) {
+            return 'NULL'
+        }
+        if (!isNaN(value) && value !== '' && !(typeof value === 'string' && (value.includes(' ') || value.includes('\n')))) {
             return value
-        } else if(typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
+        }
+        if(typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
             return value.replace(/__EXPRESSION__/g, '')
         }
         return `'${value}'`
