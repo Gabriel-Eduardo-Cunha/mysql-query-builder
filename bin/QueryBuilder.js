@@ -1,5 +1,5 @@
 function QueryBuilder(schema=null) {
-    this.schema = schema
+
     this.where = (whereFilter, and = true) => {
         if (typeof whereFilter === 'string') {
             return `WHERE ${whereFilter}`
@@ -13,10 +13,11 @@ function QueryBuilder(schema=null) {
     }
     this.select = (table, selectConfigs={}) => {
         if(typeof selectConfigs !== 'object' || selectConfigs === null) selectConfigs = {};
+        if(selectConfigs.whereAnd === undefined) selectConfigs.whereAnd = true;
         const select = `SELECT ${selectColumns((selectConfigs.select || null), table)}`
-        const from = `FROM ${this.schema ? `${this.schema}.` : ''}${table}`
+        const from = `FROM ${schema ? `${schema}.` : ''}${table}`
         const { join, joinColumns } = selectConfigs.join ? this.join(selectConfigs.join) : { join: '', joinColumns: '' }
-        const where = selectConfigs.where ? this.where(selectConfigs.where) : ''
+        const where = selectConfigs.where ? this.where(selectConfigs.where, selectConfigs.whereAnd) : ''
         const having = selectConfigs.having ? this.where(selectConfigs.having).replace('WHERE', 'HAVING') : ''
         const group = selectConfigs.group ? `GROUP BY ${selectConfigs.group}` : ''
         const order = selectConfigs.order ? `ORDER BY ${selectConfigs.order}` : ''
@@ -29,7 +30,7 @@ function QueryBuilder(schema=null) {
         const columns = `(${Object.keys(row).join(',')})`
         const values = `VALUES(${Object.values(row).map(esc).join(',')})`
         const query = `
-            INSERT INTO ${this.schema ? `${this.schema}.`: ''}${table} ${columns} ${values}
+        INSERT INTO ${schema ? `${schema}.`: ''}${table} ${columns} ${values}
         `
         return query
     }
@@ -44,7 +45,7 @@ function QueryBuilder(schema=null) {
                 if ((!joinObject.table && !defaultTable) || !joinObject.on) {
                     return { join: null, joinColumns: null }
                 }
-                const from = `${joinObject.schema || this.schema ? `${joinObject.schema || this.schema}.` : ''}${joinObject.table || defaultTable}`
+                const from = `${joinObject.schema || schema ? `${joinObject.schema || schema}.` : ''}${joinObject.table || defaultTable}`
                 const joinColumns = joinObject.select !== undefined && joinObject.select !== {} ? joinObject.select : null
                 const join = `${(joinObject.type || 'INNER').toUpperCase()} JOIN ${from} ON ${joinObject.on}`
                 return { join, joinColumns }
@@ -59,7 +60,14 @@ function QueryBuilder(schema=null) {
             return { join: null, joinColumns: null }
         }
     }
-
+    this.setSchema = (newSchema) => {
+        if(newSchema && typeof newSchema === 'string') {
+            schema = newSchema
+        } else {
+            schema = null
+        }
+    }
+    
     function selectColumns(select, table) {
         let columns;
         if (typeof select === 'string') {
@@ -73,7 +81,7 @@ function QueryBuilder(schema=null) {
         } else {
             columns = `${table ? `${table}.` : ''}*`
         }
-    
+        
         return columns
     }
     
@@ -94,16 +102,20 @@ function QueryBuilder(schema=null) {
     }
     
     function buildCondition(key, value) {
-    
-        if (value.includes('..')) {
-            const [begin, end] = value.split('..');
+        
+        if (value.includes('__BETWEEN__')) {
+            const [begin, end] = value.split('__BETWEEN__');
             return `(${key} BETWEEN ${begin} AND ${end})`;
         }
         let operator = '='
         const operators = ['=', '>=', '<=', '<>', '>', '<', '!=', 'LIKE', 'IS']
         for (const operation of operators) {
             if (value.startsWith(`__${operation}__`)) {
-                value = value.replace(`__${operation}__`, '')
+                if(operation === 'IS') {
+                    value = value.replace(`__${operation}__`, '__EXPRESSION__')
+                } else {
+                    value = value.replace(`__${operation}__`, '')
+                }
                 operator = operation
                 break;
             }
@@ -118,10 +130,13 @@ function QueryBuilder(schema=null) {
         if (!isNaN(value)) {
             return value
         } else if(typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
-            return value.replace('__EXPRESSION__', '')
+            return value.replace(/__EXPRESSION__/g, '')
         }
         return `'${value}'`
     }
+
+    this.setSchema(schema)
+
 }
 
 module.exports = QueryBuilder
