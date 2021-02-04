@@ -16,7 +16,8 @@ const query = queryBuilder.select('client', {
         'client.name': '__LIKE__sim__?__son__%__',
         'client.isHappy': '__IS__NOT FALSE',
         birthDate: '"2020-5-10"__BETWEEN__"2021-1-1"',
-        clientScore: '__>__300'
+        clientScore: '__>__300',
+        'client_document.number': [1,2,3,4,5, '2B']
     },
     group: 'cliente_document.id',
     having: {
@@ -25,7 +26,7 @@ const query = queryBuilder.select('client', {
     order: 'client.id DESC, client_document.id ASC',
     limit: 10,
     offset: 30,
-    pretyPrint: true,
+    prettyPrint: true,
 })
 
 console.log(query);

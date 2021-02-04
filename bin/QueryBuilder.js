@@ -12,6 +12,7 @@ function QueryBuilder(schema=null) {
         }
     }
     this.select = (table, selectConfigs={}) => {
+        const space = selectConfigs.prettyPrint === true ? '\n' : ' ' 
         if(typeof selectConfigs !== 'object' || selectConfigs === null) selectConfigs = {};
         if(selectConfigs.whereAnd === undefined) selectConfigs.whereAnd = true;
         const select = `SELECT ${selectColumns((selectConfigs.select || null), table)}`
@@ -23,7 +24,19 @@ function QueryBuilder(schema=null) {
         const order = selectConfigs.order ? `ORDER BY ${selectConfigs.order}` : ''
         const limit = selectConfigs.limit ? `LIMIT ${selectConfigs.limit}` : ''
         const offset = selectConfigs.offset ? `OFFSET ${selectConfigs.offset}` : ''
-        const query = `${select}${joinColumns} ${from} ${join} ${where} ${group} ${having} ${order} ${limit} ${offset}`.replace(/\s\s+/g, ' ')
+        const queryParts = [
+            select,
+            joinColumns,
+            from,
+            join,
+            where,
+            group,
+            having,
+            order,
+            limit,
+            offset
+        ]
+        const query = queryParts.join(space).replace(/\s\s+/g, ' ')
         return query
     }
     this.insert = (table, row) => {
