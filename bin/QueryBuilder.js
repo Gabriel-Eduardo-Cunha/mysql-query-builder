@@ -1,11 +1,13 @@
 function QueryBuilder(schema=null) {
 
     this.where = (whereFilter, and = true) => {
-        if (typeof whereFilter === 'string') {
+        if (typeof whereFilter === 'string' && whereFilter !== '') {
             return `WHERE ${whereFilter}`
-        } else if (Array.isArray(whereFilter)) {
+        } else if (Array.isArray(whereFilter) && whereFilter.length > 0) {
             return `WHERE ${whereFilter.join(and ? ' AND ' : ' OR ')}`
         } else if (typeof whereFilter === 'object' && whereFilter !== null) {
+            const whereFilterArray = buildWhereArrayFromObject(whereFilter)
+            if(whereFilterArray.length === 0) return "";
             return `WHERE ${buildWhereArrayFromObject(whereFilter).join(and ? ' AND ' : ' OR ')}`
         } else {
             return ""
@@ -103,12 +105,21 @@ function QueryBuilder(schema=null) {
             if (key === '__EXPRESSION__') {
                 return value
             }
+            if(typeof value === 'function') {
+                value = value()
+            }
             if (typeof value === 'number') {
                 return `${key} = ${value.toString()}`;
-            } else if (typeof value === 'string') {
+            } else if (typeof value === 'string' && value !== '') {
                 return buildCondition(key, value);
             } else if (Array.isArray(value)) {
                 return `${key} IN (${value.map(esc).join(',')})`
+            } else if (value === null || value === undefined) {
+                return `${key} IS NULL`
+            } else if (value === '') {
+                return `${key} = ''`
+            } else if (typeof value === 'boolean') {
+                return `${key} IS ${value ? 'TRUE' : 'FALSE'}`
             }
         })
         return result;
