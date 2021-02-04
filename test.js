@@ -1,9 +1,19 @@
-const queryBuilder = new (require('./bin/QueryBuilder'))
+const queryBuilder = new (require('./bin/QueryBuilder'))('ambisis01')
 
-const query = queryBuilder.select('client', {
-    select: undefined,
-    group: null
+const query = queryBuilder.delete('cliente', {
+    'client.id': 1,
+    'client.name': '__LIKE__sim__?__son__%__',
+    'client.isHappy': '__IS__NOT FALSE',
+    birthDate: '"2020-5-10"__BETWEEN__"2021-1-1"',
+    clientScore: '__>__300',
+    'client_document.number': [1,2,3,4,5, '2B']
 })
+
+// const query = queryBuilder.update('cliente', {
+//     razaoSocial: 'MARCÃO',
+//     cnpj: '13.964.548/0001-01',
+//     ehImportado: true 
+// }, {id: 1})
 /*
 const query = queryBuilder.insert( 'client', {
     id: '3',

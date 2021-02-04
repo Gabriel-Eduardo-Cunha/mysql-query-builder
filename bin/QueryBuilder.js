@@ -1,22 +1,30 @@
-function QueryBuilder(schema=null) {
+function QueryBuilder(schema = null) {
 
     this.where = (whereFilter, and = true) => {
         if (typeof whereFilter === 'string' && whereFilter !== '') {
             return `WHERE ${whereFilter}`
         } else if (Array.isArray(whereFilter) && whereFilter.length > 0) {
+            if (whereFilter.includes('__OR__')) {
+                whereFilter = whereFilter.filter(whereString => whereString !== '__OR__')
+                and = false
+            }
             return `WHERE ${whereFilter.join(and ? ' AND ' : ' OR ')}`
         } else if (typeof whereFilter === 'object' && whereFilter !== null) {
+            if (Object.keys(whereFilter).includes('__OR__')) {
+                and = whereFilter['__OR__'] ? false : true
+                delete whereFilter['__OR__']
+            }
             const whereFilterArray = buildWhereArrayFromObject(whereFilter)
-            if(whereFilterArray.length === 0) return "";
+            if (whereFilterArray.length === 0) return "";
             return `WHERE ${buildWhereArrayFromObject(whereFilter).join(and ? ' AND ' : ' OR ')}`
         } else {
             return ""
         }
     }
-    this.select = (table, selectConfigs={}) => {
-        const space = selectConfigs.prettyPrint === true ? '\n' : ' ' 
-        if(typeof selectConfigs !== 'object' || selectConfigs === null) selectConfigs = {};
-        if(selectConfigs.whereAnd === undefined) selectConfigs.whereAnd = true;
+    this.select = (table, selectConfigs = {}) => {
+        const space = selectConfigs.prettyPrint === true ? '\n' : ' '
+        if (typeof selectConfigs !== 'object' || selectConfigs === null) selectConfigs = {};
+        if (selectConfigs.whereAnd === undefined) selectConfigs.whereAnd = true;
         const select = `SELECT ${selectColumns((selectConfigs.select || null), table)}`
         const from = `FROM ${schema ? `${schema}.` : ''}${table}`
         const { join, joinColumns } = selectConfigs.join ? this.join(selectConfigs.join) : { join: '', joinColumns: '' }
@@ -36,7 +44,8 @@ function QueryBuilder(schema=null) {
             having,
             order,
             limit,
-            offset
+            offset,
+            ';'
         ]
         const query = queryParts.join(space).replace(/\s\s+/g, ' ')
         return query
@@ -45,11 +54,23 @@ function QueryBuilder(schema=null) {
         const columns = `(${Object.keys(row).join(',')})`
         const values = `VALUES(${Object.values(row).map(esc).join(',')})`
         const query = `
-        INSERT INTO ${schema ? `${schema}.`: ''}${table} ${columns} ${values}
+        INSERT INTO ${schema ? `${schema}.` : ''}${table} ${columns} ${values};
         `
         return query
     }
-    this.join = (join, defaultTable=null) => {
+    this.update = (table, data, where) => {
+        const set = buildSet(data)
+        const whereQuery = this.where(where)
+        const query = `UPDATE ${schema ? `${schema}.` : ''}${table} ${set} ${whereQuery};`
+        return query
+    }
+    this.delete = (table, where) => {
+        const whereQuery = this.where(where)
+        const query = `DELETE FROM ${schema ? `${schema}.` : ''}${table} ${whereQuery};`
+        return query
+    }
+
+    this.join = (join, defaultTable = null) => {
         if (typeof join === 'string') {
             return { join: join, joinColumns: null }
         } else if (Array.isArray(join) || (typeof join === 'object' && join !== null)) {
@@ -75,17 +96,18 @@ function QueryBuilder(schema=null) {
             return { join: null, joinColumns: null }
         }
     }
+
     this.setSchema = (newSchema) => {
-        if(newSchema && typeof newSchema === 'string') {
+        if (newSchema && typeof newSchema === 'string') {
             schema = newSchema
         } else {
             schema = null
         }
     }
-    
+
     function selectColumns(select, table) {
         let columns;
-        if (typeof select === 'string' && select.replace(/\s/g, '') !== '') {
+        if (typeof select === 'string' && !isEmptyString(select)) {
             columns = select
         } else if (Array.isArray(select)) {
             columns = select.join(',')
@@ -96,16 +118,16 @@ function QueryBuilder(schema=null) {
         } else {
             columns = `${table ? `${table}.` : ''}*`
         }
-        
+
         return columns
     }
-    
+
     function buildWhereArrayFromObject(object) {
         const result = Object.entries(object).map(([key, value]) => {
             if (key === '__EXPRESSION__') {
                 return value
             }
-            if(typeof value === 'function') {
+            if (typeof value === 'function') {
                 value = value()
             }
             if (typeof value === 'number') {
@@ -124,9 +146,9 @@ function QueryBuilder(schema=null) {
         })
         return result;
     }
-    
+
     function buildCondition(key, value) {
-        
+
         if (value.includes('__BETWEEN__')) {
             const [begin, end] = value.split('__BETWEEN__');
             return `(${key} BETWEEN ${begin} AND ${end})`;
@@ -135,7 +157,7 @@ function QueryBuilder(schema=null) {
         const operators = ['=', '>=', '<=', '<>', '>', '<', '!=', 'LIKE', 'IS']
         for (const operation of operators) {
             if (value.startsWith(`__${operation}__`)) {
-                if(operation === 'IS') {
+                if (operation === 'IS') {
                     value = value.replace(`__${operation}__`, '__EXPRESSION__')
                 } else {
                     value = value.replace(`__${operation}__`, '')
@@ -149,15 +171,37 @@ function QueryBuilder(schema=null) {
         }
         return `${key} ${operator} ${esc(value)}`;
     }
-    
+
+    function buildSet(data) {
+        let columnSets = ""
+        if (typeof data === 'string' && !isEmptyString(data)) {
+            columnSets = data
+        } else if (Array.isArray(data)) {
+            columnSets = data.join(',')
+        } else if (typeof data === 'object' && data !== null) {
+            columnSets = Object.entries(data).map(([key, value]) => `${key} = ${esc(value)}`).join(',')
+        } else {
+            return ""
+        }
+        const set = `SET ${columnSets}`
+        return set
+    }
+
+    function isEmptyString(string) {
+        return typeof string === 'string' && string.replace(/\s/g, '') === ''
+    }
+
     function esc(value) {
-        if(value === null || value === undefined) {
+        if (value === null || value === undefined) {
             return 'NULL'
+        }
+        if (value === false || value === true) {
+            return value ? 'TRUE' : 'FALSE'
         }
         if (!isNaN(value) && value !== '' && !(typeof value === 'string' && (value.includes(' ') || value.includes('\n')))) {
             return value
         }
-        if(typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
+        if (typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
             return value.replace(/__EXPRESSION__/g, '')
         }
         return `'${value}'`
