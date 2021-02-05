@@ -204,7 +204,7 @@ function QueryBuilder(schema = null) {
         if (typeof value === 'string' && value.startsWith('__EXPRESSION__')) {
             return value.replace(/__EXPRESSION__/g, '')
         }
-        return `'${value}'`
+        return `'${value.replace(/\'/g, "\\\'").replace(/\"/g, '\\\"')}'`
     }
 
     this.setSchema(schema)
