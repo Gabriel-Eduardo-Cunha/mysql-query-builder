@@ -25,9 +25,14 @@ function QueryBuilder(schema = null) {
         const space = selectConfigs.prettyPrint === true ? '\n' : ' '
         if (typeof selectConfigs !== 'object' || selectConfigs === null) selectConfigs = {};
         if (selectConfigs.whereAnd === undefined) selectConfigs.whereAnd = true;
-        const select = `SELECT ${selectColumns((selectConfigs.select || null), table)}`
         const from = `FROM ${schema ? `${schema}.` : ''}${table}`
         const { join, joinColumns } = selectConfigs.join ? this.join(selectConfigs.join) : { join: '', joinColumns: '' }
+        let select
+        if((selectConfigs.select === null || selectConfigs.select === undefined) && joinColumns !== '') {
+            select = `SELECT ${joinColumns}`
+        } else {
+            select = `SELECT ${selectColumns((selectConfigs.select || null), table)}${joinColumns !== '' ? `,${joinColumns}` : ''}`
+        }
         const where = selectConfigs.where ? this.where(selectConfigs.where, selectConfigs.whereAnd) : ''
         const having = selectConfigs.having ? this.where(selectConfigs.having).replace('WHERE', 'HAVING') : ''
         const group = selectConfigs.group ? `GROUP BY ${selectConfigs.group}` : ''
@@ -36,7 +41,6 @@ function QueryBuilder(schema = null) {
         const offset = selectConfigs.offset ? `OFFSET ${selectConfigs.offset}` : ''
         const queryParts = [
             select,
-            joinColumns,
             from,
             join,
             where,
@@ -90,7 +94,7 @@ function QueryBuilder(schema = null) {
             const joinColumns = result.map(join => join.joinColumns).filter(join => join !== null).map(selectColumns)
             return {
                 join: joins.join(' '),
-                joinColumns: joinColumns.length !== 0 ? `,${joinColumns.join(',')}` : ''
+                joinColumns: joinColumns.length !== 0 ? joinColumns.join(',') : ''
             }
         } else {
             return { join: null, joinColumns: null }
